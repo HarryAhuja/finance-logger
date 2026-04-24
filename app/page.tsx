@@ -55,8 +55,6 @@ export default function Home() {
 
   const dateRef = useRef<HTMLInputElement>(null);
 
-  /* ================= LOAD ================= */
-
   useEffect(() => {
     fetchExpenses();
     fetchOptions();
@@ -68,7 +66,7 @@ export default function Home() {
     if (!data) return;
 
     setExpenses(
-      data.map((e) => ({
+      data.map((e: any) => ({
         ...e,
         subCategory: e.sub_category,
       }))
@@ -81,14 +79,12 @@ export default function Home() {
     if (!data) return;
 
     setOptions({
-      categories: data.filter(d => d.type === "category").map(d => d.value),
-      subCategories: data.filter(d => d.type === "subcategory").map(d => d.value),
-      modes: data.filter(d => d.type === "mode").map(d => d.value),
-      accounts: data.filter(d => d.type === "account").map(d => d.value),
+      categories: data.filter((d: any) => d.type === "category").map((d: any) => d.value),
+      subCategories: data.filter((d: any) => d.type === "subcategory").map((d: any) => d.value),
+      modes: data.filter((d: any) => d.type === "mode").map((d: any) => d.value),
+      accounts: data.filter((d: any) => d.type === "account").map((d: any) => d.value),
     });
   };
-
-  /* ================= ACTIONS ================= */
 
   const saveExpense = async () => {
     if (!form.date || !form.amount) {
@@ -153,14 +149,10 @@ export default function Home() {
     });
   };
 
-  /* ================= OPTIONS ================= */
-
   const updateOption = async (type: string, values: string[]) => {
-    // delete old
     await supabase.from("options").delete().eq("type", type);
 
-    // insert new
-    const payload = values.map(v => ({ type, value: v }));
+    const payload = values.map((v: string) => ({ type, value: v }));
     if (payload.length) {
       await supabase.from("options").insert(payload);
     }
@@ -168,14 +160,10 @@ export default function Home() {
     fetchOptions();
   };
 
-  /* ================= SORT ================= */
-
   const sortedExpenses = [...expenses].sort((a, b) =>
     new Date(b.date).getTime() - new Date(a.date).getTime() ||
     Number(b.id) - Number(a.id)
   );
-
-  /* ================= UI ================= */
 
   return (
     <div className="min-h-screen bg-gray-100 p-6 space-y-6">
@@ -248,7 +236,6 @@ export default function Home() {
         )}
       </div>
 
-      {/* TABLE */}
       <div className="bg-white rounded-xl shadow overflow-hidden">
 
         <div className="grid grid-cols-10 bg-gray-100 p-3 text-sm font-semibold">
@@ -288,16 +275,15 @@ export default function Home() {
         ))}
       </div>
 
-      {/* OPTIONS */}
       <div className="grid grid-cols-2 gap-4">
         <OptionManager title="Categories" values={options.categories}
-          setValues={(v) => updateOption("category", v)} />
+          setValues={(v: string[]) => updateOption("category", v)} />
         <OptionManager title="SubCategories" values={options.subCategories}
-          setValues={(v) => updateOption("subcategory", v)} />
+          setValues={(v: string[]) => updateOption("subcategory", v)} />
         <OptionManager title="Modes" values={options.modes}
-          setValues={(v) => updateOption("mode", v)} />
+          setValues={(v: string[]) => updateOption("mode", v)} />
         <OptionManager title="Accounts" values={options.accounts}
-          setValues={(v) => updateOption("account", v)} />
+          setValues={(v: string[]) => updateOption("account", v)} />
       </div>
 
     </div>
@@ -333,7 +319,15 @@ function Select({ label, options, value, onChange }: any) {
   );
 }
 
-function OptionManager({ title, values, setValues }: any) {
+function OptionManager({
+  title,
+  values,
+  setValues,
+}: {
+  title: string;
+  values: string[];
+  setValues: (v: string[]) => void;
+}) {
   const [input, setInput] = useState("");
 
   return (
