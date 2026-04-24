@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { supabase } from "../lib/supabase";
 
 /* ================= TYPES ================= */
 
 type Expense = {
-  id: number;
+  id: string;
   date: string;
   amount: number;
   category: string;
@@ -27,10 +28,10 @@ type Options = {
 /* ================= DEFAULT ================= */
 
 const defaultOptions: Options = {
-  categories: ["Food", "Travel"],
-  subCategories: ["Swiggy", "Groceries"],
-  modes: ["UPI", "Card"],
-  accounts: ["ICICI", "Cash"],
+  categories: [],
+  subCategories: [],
+  modes: [],
+  accounts: [],
 };
 
 /* ================= MAIN ================= */
@@ -40,7 +41,7 @@ export default function Home() {
   const [options, setOptions] = useState<Options>(defaultOptions);
 
   const [form, setForm] = useState({
-    id: null as number | null,
+    id: null as string | null,
     date: "",
     amount: "",
     category: "",
@@ -54,61 +55,77 @@ export default function Home() {
 
   const dateRef = useRef<HTMLInputElement>(null);
 
-  /* ================= STORAGE ================= */
+  /* ================= LOAD ================= */
 
   useEffect(() => {
-    const e = localStorage.getItem("expenses");
-    const o = localStorage.getItem("options");
-
-    if (e) setExpenses(JSON.parse(e));
-
-    if (o) {
-      try {
-        const parsed = JSON.parse(o);
-        setOptions({
-          categories: parsed.categories || defaultOptions.categories,
-          subCategories: parsed.subCategories || defaultOptions.subCategories,
-          modes: parsed.modes || defaultOptions.modes,
-          accounts: parsed.accounts || defaultOptions.accounts,
-        });
-      } catch {
-        setOptions(defaultOptions);
-      }
-    }
+    fetchExpenses();
+    fetchOptions();
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem("expenses", JSON.stringify(expenses));
-    localStorage.setItem("options", JSON.stringify(options));
-  }, [expenses, options]);
+  const fetchExpenses = async () => {
+    const { data } = await supabase.from("expenses").select("*");
+
+    if (!data) return;
+
+    setExpenses(
+      data.map((e) => ({
+        ...e,
+        subCategory: e.sub_category,
+      }))
+    );
+  };
+
+  const fetchOptions = async () => {
+    const { data } = await supabase.from("options").select("*");
+
+    if (!data) return;
+
+    setOptions({
+      categories: data.filter(d => d.type === "category").map(d => d.value),
+      subCategories: data.filter(d => d.type === "subcategory").map(d => d.value),
+      modes: data.filter(d => d.type === "mode").map(d => d.value),
+      accounts: data.filter(d => d.type === "account").map(d => d.value),
+    });
+  };
 
   /* ================= ACTIONS ================= */
 
-  const saveExpense = () => {
+  const saveExpense = async () => {
     if (!form.date || !form.amount) {
       alert("Date & Amount required");
       return;
     }
 
     if (form.id) {
-      setExpenses(
-        expenses.map((e) =>
-          e.id === form.id
-            ? { ...form, amount: Number(form.amount) }
-            : e
-        )
-      );
-    } else {
-      setExpenses([
-        ...expenses,
-        {
-          ...form,
+      await supabase
+        .from("expenses")
+        .update({
+          date: form.date,
           amount: Number(form.amount),
-          id: Date.now(),
-        },
-      ]);
+          category: form.category,
+          sub_category: form.subCategory,
+          type: form.type,
+          mode: form.mode,
+          account: form.account,
+          recurring: form.recurring,
+          notes: form.notes,
+        })
+        .eq("id", form.id);
+    } else {
+      await supabase.from("expenses").insert({
+        date: form.date,
+        amount: Number(form.amount),
+        category: form.category,
+        sub_category: form.subCategory,
+        type: form.type,
+        mode: form.mode,
+        account: form.account,
+        recurring: form.recurring,
+        notes: form.notes,
+      });
     }
 
+    await fetchExpenses();
     resetForm();
   };
 
@@ -116,8 +133,9 @@ export default function Home() {
     setForm({ ...e, amount: String(e.amount) });
   };
 
-  const deleteExpense = (id: number) => {
-    setExpenses(expenses.filter((e) => e.id !== id));
+  const deleteExpense = async (id: string) => {
+    await supabase.from("expenses").delete().eq("id", id);
+    fetchExpenses();
   };
 
   const resetForm = () => {
@@ -135,11 +153,26 @@ export default function Home() {
     });
   };
 
+  /* ================= OPTIONS ================= */
+
+  const updateOption = async (type: string, values: string[]) => {
+    // delete old
+    await supabase.from("options").delete().eq("type", type);
+
+    // insert new
+    const payload = values.map(v => ({ type, value: v }));
+    if (payload.length) {
+      await supabase.from("options").insert(payload);
+    }
+
+    fetchOptions();
+  };
+
   /* ================= SORT ================= */
 
   const sortedExpenses = [...expenses].sort((a, b) =>
     new Date(b.date).getTime() - new Date(a.date).getTime() ||
-    b.id - a.id
+    Number(b.id) - Number(a.id)
   );
 
   /* ================= UI ================= */
@@ -149,18 +182,13 @@ export default function Home() {
 
       <h1 className="text-3xl font-bold">💸 Expense Logger</h1>
 
-      {/* FORM */}
       <div className="bg-white p-5 rounded-xl shadow grid grid-cols-4 gap-3">
 
         <div onClick={() => dateRef.current?.showPicker()}>
           <Label text="Date" />
-          <input
-            ref={dateRef}
-            type="date"
+          <input ref={dateRef} type="date"
             value={form.date}
-            onChange={(e) =>
-              setForm({ ...form, date: e.target.value })
-            }
+            onChange={(e) => setForm({ ...form, date: e.target.value })}
             className="border p-2 rounded w-full cursor-pointer"
           />
         </div>
@@ -195,12 +223,9 @@ export default function Home() {
         />
 
         <label className="flex items-center gap-2 mt-6">
-          <input
-            type="checkbox"
+          <input type="checkbox"
             checked={form.recurring}
-            onChange={(e) =>
-              setForm({ ...form, recurring: e.target.checked })
-            }
+            onChange={(e) => setForm({ ...form, recurring: e.target.checked })}
           />
           Recurring
         </label>
@@ -210,18 +235,14 @@ export default function Home() {
           onChange={(v: string) => setForm({ ...form, notes: v })}
         />
 
-        <button
-          onClick={saveExpense}
-          className="bg-blue-600 text-white rounded-lg mt-6"
-        >
+        <button onClick={saveExpense}
+          className="bg-blue-600 text-white rounded-lg mt-6">
           {form.id ? "Update Expense" : "Add Expense"}
         </button>
 
         {form.id && (
-          <button
-            onClick={resetForm}
-            className="bg-gray-400 text-white rounded-lg mt-6"
-          >
+          <button onClick={resetForm}
+            className="bg-gray-400 text-white rounded-lg mt-6">
             Cancel
           </button>
         )}
@@ -231,16 +252,9 @@ export default function Home() {
       <div className="bg-white rounded-xl shadow overflow-hidden">
 
         <div className="grid grid-cols-10 bg-gray-100 p-3 text-sm font-semibold">
-          <div>Date</div>
-          <div>Amount</div>
-          <div>Category</div>
-          <div>SubCategory</div>
-          <div>Type</div>
-          <div>Account</div>
-          <div>Mode</div>
-          <div>Notes</div>
-          <div className="text-center">Edit</div>
-          <div className="text-center">Delete</div>
+          <div>Date</div><div>Amount</div><div>Category</div><div>SubCategory</div>
+          <div>Type</div><div>Account</div><div>Mode</div><div>Notes</div>
+          <div className="text-center">Edit</div><div className="text-center">Delete</div>
         </div>
 
         {sortedExpenses.map((e) => (
@@ -267,19 +281,8 @@ export default function Home() {
               {e.notes || "-"}
             </div>
 
-            <button
-              onClick={() => editExpense(e)}
-              className="text-blue-500 text-center"
-            >
-              Edit
-            </button>
-
-            <button
-              onClick={() => deleteExpense(e.id)}
-              className="text-red-500 text-center"
-            >
-              ✕
-            </button>
+            <button onClick={() => editExpense(e)} className="text-blue-500 text-center">Edit</button>
+            <button onClick={() => deleteExpense(e.id)} className="text-red-500 text-center">✕</button>
 
           </div>
         ))}
@@ -287,10 +290,14 @@ export default function Home() {
 
       {/* OPTIONS */}
       <div className="grid grid-cols-2 gap-4">
-        <OptionManager title="Categories" values={options.categories} setValues={(v) => setOptions({ ...options, categories: v })} />
-        <OptionManager title="SubCategories" values={options.subCategories} setValues={(v) => setOptions({ ...options, subCategories: v })} />
-        <OptionManager title="Modes" values={options.modes} setValues={(v) => setOptions({ ...options, modes: v })} />
-        <OptionManager title="Accounts" values={options.accounts} setValues={(v) => setOptions({ ...options, accounts: v })} />
+        <OptionManager title="Categories" values={options.categories}
+          setValues={(v) => updateOption("category", v)} />
+        <OptionManager title="SubCategories" values={options.subCategories}
+          setValues={(v) => updateOption("subcategory", v)} />
+        <OptionManager title="Modes" values={options.modes}
+          setValues={(v) => updateOption("mode", v)} />
+        <OptionManager title="Accounts" values={options.accounts}
+          setValues={(v) => updateOption("account", v)} />
       </div>
 
     </div>
@@ -335,14 +342,11 @@ function OptionManager({ title, values, setValues }: any) {
 
       <div className="flex gap-2 mb-3">
         <input value={input} onChange={(e) => setInput(e.target.value)} className="border p-2 rounded flex-1" />
-        <button
-          onClick={() => {
-            if (!input.trim()) return;
-            setValues([...(values || []), input]);
-            setInput("");
-          }}
-          className="bg-blue-500 text-white px-3 rounded"
-        >
+        <button onClick={() => {
+          if (!input.trim()) return;
+          setValues([...(values || []), input]);
+          setInput("");
+        }} className="bg-blue-500 text-white px-3 rounded">
           Add
         </button>
       </div>
