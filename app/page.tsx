@@ -344,7 +344,7 @@ const getSubCategories = () => {
 }
 
 /* ================= COMPONENTS ================= */
-g
+
 function Label({ text }: any) {
   return <div className="text-xs text-gray-500 mb-1">{text}</div>;
 }
