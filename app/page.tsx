@@ -64,7 +64,6 @@ export default function Home() {
 
   const fetchExpenses = async () => {
     const { data } = await supabase.from("expenses").select("*");
-
     if (!data) return;
 
     setExpenses(
@@ -78,7 +77,6 @@ export default function Home() {
 
   const fetchOptions = async () => {
     const { data } = await supabase.from("options").select("*");
-
     if (!data) return;
 
     setOptions({
@@ -132,11 +130,12 @@ export default function Home() {
 
       await fetchExpenses();
 
-      // keep all except amount
+      // keep all except amount + notes
       setForm({
         ...form,
         id: null,
         amount: "",
+        notes: "", // ❗ do not remember notes
       });
     }
   };
@@ -234,29 +233,31 @@ export default function Home() {
           onChange={(v: string) => setForm({ ...form, account: v })}
         />
 
-        <label className="flex items-center gap-2 mt-6">
-          <input
-            type="checkbox"
-            checked={form.recurring}
-            onChange={(e) => setForm({ ...form, recurring: e.target.checked })}
-          />
-          Recurring
-        </label>
+        {/* ✅ Recurring + Pending aligned */}
+        <div className="flex items-center gap-6 mt-6 col-span-2">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={form.recurring}
+              onChange={(e) => setForm({ ...form, recurring: e.target.checked })}
+            />
+            Recurring
+          </label>
 
-        {/* ✅ NEW: Pending checkbox */}
-        <label className="flex items-center gap-2 mt-6">
-          <input
-            type="checkbox"
-            checked={form.status === "pending"}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                status: e.target.checked ? "pending" : "settled",
-              })
-            }
-          />
-          Pending
-        </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={form.status === "pending"}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  status: e.target.checked ? "pending" : "settled",
+                })
+              }
+            />
+            Pending
+          </label>
+        </div>
 
         <Input label="Notes" className="col-span-3"
           value={form.notes}
@@ -296,7 +297,7 @@ export default function Home() {
           <div
             key={e.id}
             className={`grid grid-cols-10 p-3 text-sm items-center border-t ${
-              e.status === "pending" ? "bg-yellow-50 border-yellow-300" : ""
+              e.status === "pending" ? "bg-red-50 border-red-300" : ""
             }`}
           >
             <div>{e.date}</div>
@@ -309,11 +310,6 @@ export default function Home() {
               {e.recurring && (
                 <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-600 rounded text-[10px]">
                   Recurring
-                </span>
-              )}
-              {e.status === "pending" && (
-                <span className="ml-2 px-2 py-0.5 bg-yellow-200 text-yellow-800 rounded text-[10px]">
-                  Pending
                 </span>
               )}
             </div>
@@ -411,7 +407,7 @@ function OptionManager({
         {(values || []).map((v: string) => (
           <span key={v} className="bg-blue-100 px-3 py-1 rounded-full flex items-center gap-2">
             {v}
-            <button onClick={() => setValues(values.filter((x: string) => x !== v))} className="text-red-500">
+            <button onClick={() => setValues(values.filter((x: string) => x !== v)} className="text-red-500">
               ✕
             </button>
           </span>
