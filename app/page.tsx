@@ -309,8 +309,8 @@ export default function Home() {
       <div className="grid grid-cols-2 gap-4">
         <OptionManager title="Categories" values={options.categories}
           setValues={(v: string[]) => updateOption("category", v)} />
-        <OptionManager title="SubCategories" values={options.subCategories}
-          setValues={(v: string[]) => updateOption("subcategory", v)} />
+        <SubCategoryManager
+          categories={options.categories} />
         <OptionManager title="Modes" values={options.modes}
           setValues={(v: string[]) => updateOption("mode", v)} />
         <OptionManager title="Accounts" values={options.accounts}
@@ -381,3 +381,67 @@ function OptionManager({ title, values, setValues }: any) {
     </div>
   );
 }
+
+function SubCategoryManager({ categories }: { categories: string[] }) {
+  const [input, setInput] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+
+  const addSubCategory = async () => {
+    if (!input.trim() || !selectedCategory) return;
+
+    // get parent category row from DB
+    const { data: parentData } = await supabase
+      .from("options")
+      .select("id")
+      .eq("type", "category")
+      .eq("value", selectedCategory)
+      .single();
+
+    if (!parentData) return;
+
+    await supabase.from("options").insert({
+      type: "subcategory",
+      value: input,
+      parent_id: parentData.id,
+    });
+
+    setInput("");
+  };
+
+  return (
+    <div className="bg-white p-4 rounded-xl shadow">
+      <div className="font-semibold mb-2">SubCategories</div>
+
+      <div className="flex gap-2 mb-3">
+
+        {/* ✅ NEW: category dropdown */}
+        <select
+          value={selectedCategory}
+          onChange={(e) => setSelectedCategory(e.target.value)}
+          className="border p-2 rounded"
+        >
+          <option value="">Category</option>
+          {categories.map((c) => (
+            <option key={c}>{c}</option>
+          ))}
+        </select>
+
+        {/* existing input */}
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          className="border p-2 rounded flex-1"
+          placeholder="SubCategory"
+        />
+
+        <button
+          onClick={addSubCategory}
+          className="bg-blue-500 text-white px-3 rounded"
+        >
+          Add
+        </button>
+      </div>
+    </div>
+  );
+}
+
