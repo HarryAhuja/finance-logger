@@ -35,13 +35,12 @@ const defaultOptions: Options = {
   accounts: [],
 };
 
-const [allOptions, setAllOptions] = useState<any[]>([]);
-
 /* ================= MAIN ================= */
 
 export default function Home() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [options, setOptions] = useState<Options>(defaultOptions);
+  const [allOptions, setAllOptions] = useState<any[]>([]);
 
   const [form, setForm] = useState({
     id: null as string | null,
@@ -345,7 +344,7 @@ const getSubCategories = () => {
 }
 
 /* ================= COMPONENTS ================= */
-
+g
 function Label({ text }: any) {
   return <div className="text-xs text-gray-500 mb-1">{text}</div>;
 }
