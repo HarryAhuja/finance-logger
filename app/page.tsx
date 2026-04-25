@@ -62,7 +62,6 @@ export default function Home() {
 
   const fetchExpenses = async () => {
     const { data } = await supabase.from("expenses").select("*");
-
     if (!data) return;
 
     setExpenses(
@@ -75,7 +74,6 @@ export default function Home() {
 
   const fetchOptions = async () => {
     const { data } = await supabase.from("options").select("*");
-
     if (!data) return;
 
     setOptions({
@@ -86,6 +84,8 @@ export default function Home() {
     });
   };
 
+  /* ================= ACTIONS ================= */
+
   const saveExpense = async () => {
     if (!form.date || !form.amount) {
       alert("Date & Amount required");
@@ -93,6 +93,7 @@ export default function Home() {
     }
 
     if (form.id) {
+      // EDIT CASE
       await supabase
         .from("expenses")
         .update({
@@ -107,7 +108,11 @@ export default function Home() {
           notes: form.notes,
         })
         .eq("id", form.id);
+
+      await fetchExpenses();
+      resetForm(); // unchanged
     } else {
+      // ADD CASE
       await supabase.from("expenses").insert({
         date: form.date,
         amount: Number(form.amount),
@@ -119,10 +124,16 @@ export default function Home() {
         recurring: form.recurring,
         notes: form.notes,
       });
-    }
 
-    await fetchExpenses();
-    resetForm();
+      await fetchExpenses();
+
+      // 🔥 KEY CHANGE: keep all fields, only reset amount
+      setForm({
+        ...form,
+        id: null,
+        amount: "",
+      });
+    }
   };
 
   const editExpense = (e: Expense) => {
@@ -160,10 +171,15 @@ export default function Home() {
     fetchOptions();
   };
 
-  const sortedExpenses = [...expenses].sort((a, b) =>
-    new Date(b.date).getTime() - new Date(a.date).getTime() ||
-    Number(b.id) - Number(a.id)
+  /* ================= SORT ================= */
+
+  const sortedExpenses = [...expenses].sort(
+    (a, b) =>
+      new Date(b.date).getTime() - new Date(a.date).getTime() ||
+      Number(b.id) - Number(a.id)
   );
+
+  /* ================= UI ================= */
 
   return (
     <div className="min-h-screen bg-gray-100 p-6 space-y-6">
@@ -174,14 +190,19 @@ export default function Home() {
 
         <div onClick={() => dateRef.current?.showPicker()}>
           <Label text="Date" />
-          <input ref={dateRef} type="date"
+          <input
+            ref={dateRef}
+            type="date"
             value={form.date}
             onChange={(e) => setForm({ ...form, date: e.target.value })}
             className="border p-2 rounded w-full cursor-pointer"
           />
         </div>
 
-        <Input label="Amount" type="number" value={form.amount}
+        <Input
+          label="Amount"
+          type="number"
+          value={form.amount}
           onChange={(v: string) => setForm({ ...form, amount: v })}
         />
 
@@ -211,37 +232,52 @@ export default function Home() {
         />
 
         <label className="flex items-center gap-2 mt-6">
-          <input type="checkbox"
+          <input
+            type="checkbox"
             checked={form.recurring}
             onChange={(e) => setForm({ ...form, recurring: e.target.checked })}
           />
           Recurring
         </label>
 
-        <Input label="Notes" className="col-span-3"
+        <Input
+          label="Notes"
+          className="col-span-3"
           value={form.notes}
           onChange={(v: string) => setForm({ ...form, notes: v })}
         />
 
-        <button onClick={saveExpense}
-          className="bg-blue-600 text-white rounded-lg mt-6">
+        <button
+          onClick={saveExpense}
+          className="bg-blue-600 text-white rounded-lg mt-6"
+        >
           {form.id ? "Update Expense" : "Add Expense"}
         </button>
 
         {form.id && (
-          <button onClick={resetForm}
-            className="bg-gray-400 text-white rounded-lg mt-6">
+          <button
+            onClick={resetForm}
+            className="bg-gray-400 text-white rounded-lg mt-6"
+          >
             Cancel
           </button>
         )}
       </div>
 
+      {/* TABLE */}
       <div className="bg-white rounded-xl shadow overflow-hidden">
 
         <div className="grid grid-cols-10 bg-gray-100 p-3 text-sm font-semibold">
-          <div>Date</div><div>Amount</div><div>Category</div><div>SubCategory</div>
-          <div>Type</div><div>Account</div><div>Mode</div><div>Notes</div>
-          <div className="text-center">Edit</div><div className="text-center">Delete</div>
+          <div>Date</div>
+          <div>Amount</div>
+          <div>Category</div>
+          <div>SubCategory</div>
+          <div>Type</div>
+          <div>Account</div>
+          <div>Mode</div>
+          <div>Notes</div>
+          <div className="text-center">Edit</div>
+          <div className="text-center">Delete</div>
         </div>
 
         {sortedExpenses.map((e) => (
@@ -268,13 +304,19 @@ export default function Home() {
               {e.notes || "-"}
             </div>
 
-            <button onClick={() => editExpense(e)} className="text-blue-500 text-center">Edit</button>
-            <button onClick={() => deleteExpense(e.id)} className="text-red-500 text-center">✕</button>
+            <button onClick={() => editExpense(e)} className="text-blue-500 text-center">
+              Edit
+            </button>
+
+            <button onClick={() => deleteExpense(e.id)} className="text-red-500 text-center">
+              ✕
+            </button>
 
           </div>
         ))}
       </div>
 
+      {/* OPTIONS */}
       <div className="grid grid-cols-2 gap-4">
         <OptionManager title="Categories" values={options.categories}
           setValues={(v: string[]) => updateOption("category", v)} />
