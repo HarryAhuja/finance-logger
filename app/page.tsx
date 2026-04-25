@@ -35,6 +35,8 @@ const defaultOptions: Options = {
   accounts: [],
 };
 
+const [allOptions, setAllOptions] = useState<any[]>([]);
+
 /* ================= MAIN ================= */
 
 export default function Home() {
@@ -76,16 +78,37 @@ export default function Home() {
   };
 
   const fetchOptions = async () => {
-    const { data } = await supabase.from("options").select("*");
-    if (!data) return;
+  const { data } = await supabase.from("options").select("*");
+  if (!data) return;
 
-    setOptions({
-      categories: data.filter((d: any) => d.type === "category").map((d: any) => d.value),
-      subCategories: data.filter((d: any) => d.type === "subcategory").map((d: any) => d.value),
-      modes: data.filter((d: any) => d.type === "mode").map((d: any) => d.value),
-      accounts: data.filter((d: any) => d.type === "account").map((d: any) => d.value),
-    });
-  };
+  setAllOptions(data); // NEW
+
+  setOptions({
+    categories: data.filter((d: any) => d.type === "category").map((d: any) => d.value),
+
+    // ❗ IMPORTANT: don't prefill subcategories anymore
+    subCategories: [],
+
+    modes: data.filter((d: any) => d.type === "mode").map((d: any) => d.value),
+    accounts: data.filter((d: any) => d.type === "account").map((d: any) => d.value),
+  });
+};
+
+const getSubCategories = () => {
+  const selectedCategory = allOptions.find(
+    (o) => o.type === "category" && o.value === form.category
+  );
+
+  if (!selectedCategory) return [];
+
+  return allOptions
+    .filter(
+      (o) =>
+        o.type === "subcategory" &&
+        o.parent_id === selectedCategory.id
+    )
+    .map((o) => o.value);
+};
 
   const saveExpense = async () => {
     if (!form.date || !form.amount) {
@@ -194,10 +217,10 @@ export default function Home() {
 
         <Select label="Category" options={options.categories}
           value={form.category}
-          onChange={(v: string) => setForm({ ...form, category: v })}
+          onChange={(v: string) => setForm({ ...form, category: v, subCategory: "" })}
         />
 
-        <Select label="SubCategory" options={options.subCategories}
+        <Select label="SubCategory" options={getSubCategories()}
           value={form.subCategory}
           onChange={(v: string) => setForm({ ...form, subCategory: v })}
         />
