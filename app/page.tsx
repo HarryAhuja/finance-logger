@@ -15,6 +15,7 @@ type Expense = {
   mode: string;
   account: string;
   recurring: boolean;
+  status: "pending" | "settled";
   notes: string;
 };
 
@@ -50,6 +51,7 @@ export default function Home() {
     mode: "",
     account: "",
     recurring: false,
+    status: "settled" as "pending" | "settled",
     notes: "",
   });
 
@@ -62,18 +64,21 @@ export default function Home() {
 
   const fetchExpenses = async () => {
     const { data } = await supabase.from("expenses").select("*");
+
     if (!data) return;
 
     setExpenses(
       data.map((e: any) => ({
         ...e,
         subCategory: e.sub_category,
+        status: e.status || "settled",
       }))
     );
   };
 
   const fetchOptions = async () => {
     const { data } = await supabase.from("options").select("*");
+
     if (!data) return;
 
     setOptions({
@@ -93,7 +98,6 @@ export default function Home() {
     }
 
     if (form.id) {
-      // EDIT CASE
       await supabase
         .from("expenses")
         .update({
@@ -105,14 +109,14 @@ export default function Home() {
           mode: form.mode,
           account: form.account,
           recurring: form.recurring,
+          status: form.status,
           notes: form.notes,
         })
         .eq("id", form.id);
 
       await fetchExpenses();
-      resetForm(); // unchanged
+      resetForm();
     } else {
-      // ADD CASE
       await supabase.from("expenses").insert({
         date: form.date,
         amount: Number(form.amount),
@@ -122,12 +126,13 @@ export default function Home() {
         mode: form.mode,
         account: form.account,
         recurring: form.recurring,
+        status: form.status,
         notes: form.notes,
       });
 
       await fetchExpenses();
 
-      // 🔥 KEY CHANGE: keep all fields, only reset amount
+      // keep all except amount
       setForm({
         ...form,
         id: null,
@@ -156,6 +161,7 @@ export default function Home() {
       mode: "",
       account: "",
       recurring: false,
+      status: "settled",
       notes: "",
     });
   };
@@ -199,10 +205,7 @@ export default function Home() {
           />
         </div>
 
-        <Input
-          label="Amount"
-          type="number"
-          value={form.amount}
+        <Input label="Amount" type="number" value={form.amount}
           onChange={(v: string) => setForm({ ...form, amount: v })}
         />
 
@@ -240,25 +243,34 @@ export default function Home() {
           Recurring
         </label>
 
-        <Input
-          label="Notes"
-          className="col-span-3"
+        {/* ✅ NEW: Pending checkbox */}
+        <label className="flex items-center gap-2 mt-6">
+          <input
+            type="checkbox"
+            checked={form.status === "pending"}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                status: e.target.checked ? "pending" : "settled",
+              })
+            }
+          />
+          Pending
+        </label>
+
+        <Input label="Notes" className="col-span-3"
           value={form.notes}
           onChange={(v: string) => setForm({ ...form, notes: v })}
         />
 
-        <button
-          onClick={saveExpense}
-          className="bg-blue-600 text-white rounded-lg mt-6"
-        >
+        <button onClick={saveExpense}
+          className="bg-blue-600 text-white rounded-lg mt-6">
           {form.id ? "Update Expense" : "Add Expense"}
         </button>
 
         {form.id && (
-          <button
-            onClick={resetForm}
-            className="bg-gray-400 text-white rounded-lg mt-6"
-          >
+          <button onClick={resetForm}
+            className="bg-gray-400 text-white rounded-lg mt-6">
             Cancel
           </button>
         )}
@@ -281,8 +293,12 @@ export default function Home() {
         </div>
 
         {sortedExpenses.map((e) => (
-          <div key={e.id} className="grid grid-cols-10 p-3 text-sm items-center border-t">
-
+          <div
+            key={e.id}
+            className={`grid grid-cols-10 p-3 text-sm items-center border-t ${
+              e.status === "pending" ? "bg-yellow-50 border-yellow-300" : ""
+            }`}
+          >
             <div>{e.date}</div>
             <div className="font-semibold">₹{e.amount}</div>
             <div>{e.category}</div>
@@ -293,6 +309,11 @@ export default function Home() {
               {e.recurring && (
                 <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-600 rounded text-[10px]">
                   Recurring
+                </span>
+              )}
+              {e.status === "pending" && (
+                <span className="ml-2 px-2 py-0.5 bg-yellow-200 text-yellow-800 rounded text-[10px]">
+                  Pending
                 </span>
               )}
             </div>
@@ -311,7 +332,6 @@ export default function Home() {
             <button onClick={() => deleteExpense(e.id)} className="text-red-500 text-center">
               ✕
             </button>
-
           </div>
         ))}
       </div>
