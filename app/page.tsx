@@ -407,7 +407,7 @@ function OptionManager({
         {(values || []).map((v: string) => (
           <span key={v} className="bg-blue-100 px-3 py-1 rounded-full flex items-center gap-2">
             {v}
-            <button onClick={() => setValues(values.filter((x: string) => x !== v)} className="text-red-500">
+            <button onClick={() => setValues(values.filter((x: string) => x !== v))} className="text-red-500">
               ✕
             </button>
           </span>
