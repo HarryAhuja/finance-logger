@@ -247,7 +247,7 @@ export default function Home() {
           </label>
         </div>
 
-        {/* Row 4 - Buttons centered */}
+        {/* Row 4 */}
         <div className="col-span-4 flex justify-center gap-4 mt-4">
           <button onClick={saveExpense}
             className="bg-blue-600 text-white px-6 py-2 rounded-lg">
@@ -274,17 +274,30 @@ export default function Home() {
 
         {sortedExpenses.map((e) => (
           <div key={e.id}
-            className={`grid grid-cols-10 p-3 text-sm items-center border-t ${
+            className={`grid grid-cols-10 p-3 text-sm items-start border-t ${
               e.status === "pending" ? "bg-red-50 border-red-300" : ""
             }`}>
             <div>{e.date}</div>
             <div className="font-semibold">₹{e.amount}</div>
             <div>{e.category}</div>
             <div>{e.subCategory}</div>
-            <div>{e.type}</div>
+
+            <div className="text-xs flex flex-wrap gap-1">
+              {e.type}
+              {e.recurring && (
+                <span className="px-2 py-0.5 bg-blue-100 text-blue-600 rounded text-[10px]">
+                  Recurring
+                </span>
+              )}
+            </div>
+
             <div>{e.account}</div>
             <div>{e.mode}</div>
-            <div className="truncate text-xs">{e.notes || "-"}</div>
+
+            {/* ✅ FIXED: notes wrap */}
+            <div className="text-xs break-words whitespace-pre-wrap">
+              {e.notes || "-"}
+            </div>
 
             <button onClick={() => editExpense(e)} className="text-blue-500 text-center">Edit</button>
             <button onClick={() => deleteExpense(e.id)} className="text-red-500 text-center">✕</button>
