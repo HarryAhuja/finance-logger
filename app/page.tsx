@@ -385,11 +385,25 @@ function OptionManager({ title, values, setValues }: any) {
 function SubCategoryManager({ categories }: { categories: string[] }) {
   const [input, setInput] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [subCategories, setSubCategories] = useState<any[]>([]); // NEW
+
+  // ✅ fetch subcategories
+  const fetchSubCategories = async () => {
+    const { data } = await supabase
+      .from("options")
+      .select("*")
+      .eq("type", "subcategory");
+
+    setSubCategories(data || []);
+  };
+
+  useEffect(() => {
+    fetchSubCategories();
+  }, []);
 
   const addSubCategory = async () => {
     if (!input.trim() || !selectedCategory) return;
 
-    // get parent category row from DB
     const { data: parentData } = await supabase
       .from("options")
       .select("id")
@@ -406,6 +420,12 @@ function SubCategoryManager({ categories }: { categories: string[] }) {
     });
 
     setInput("");
+    fetchSubCategories(); // ✅ refresh list
+  };
+
+  const deleteSubCategory = async (id: string) => {
+    await supabase.from("options").delete().eq("id", id);
+    fetchSubCategories();
   };
 
   return (
@@ -413,8 +433,6 @@ function SubCategoryManager({ categories }: { categories: string[] }) {
       <div className="font-semibold mb-2">SubCategories</div>
 
       <div className="flex gap-2 mb-3">
-
-        {/* ✅ NEW: category dropdown */}
         <select
           value={selectedCategory}
           onChange={(e) => setSelectedCategory(e.target.value)}
@@ -426,7 +444,6 @@ function SubCategoryManager({ categories }: { categories: string[] }) {
           ))}
         </select>
 
-        {/* existing input */}
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -440,6 +457,24 @@ function SubCategoryManager({ categories }: { categories: string[] }) {
         >
           Add
         </button>
+      </div>
+
+      {/* ✅ THIS PART WAS MISSING */}
+      <div className="flex flex-wrap gap-2">
+        {subCategories.map((s) => (
+          <span
+            key={s.id}
+            className="bg-blue-100 px-3 py-1 rounded-full flex items-center gap-2"
+          >
+            {s.value}
+            <button
+              onClick={() => deleteSubCategory(s.id)}
+              className="text-red-500"
+            >
+              ✕
+            </button>
+          </span>
+        ))}
       </div>
     </div>
   );
